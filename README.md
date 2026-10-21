@@ -12,7 +12,7 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [Architecture](#-architecture)
+- [Architecture](#-one)
 - [Prerequisites](#-prerequisites)
 - [Step 1 — Database Table](#-step-1--database-table-main-table)
 - [Step 2 — Draft Table](#-step-2--draft-table-why-it-exists)
@@ -53,7 +53,7 @@ In the **Managed scenario**, the RAP framework automatically handles database `I
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ One
 
 The RAP stack follows a strict layered architecture. Each layer has a specific responsibility, and no layer should skip or bypass another.
 
