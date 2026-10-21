@@ -94,8 +94,8 @@ Before you start, make sure you have:
 
 - [ ] SAP BTP Trial account — [Get one free here](https://account.hanatrial.ondemand.com)
 - [ ] Steps to create Trial account - [Steps](https://developers.sap.com/tutorials/hcp-create-trial-account)
-- [ ] ABAP Environment trial instance provisioned on BTP [Steps](https://developers.sap.com/tutorials/abap-environment-trial-onboarding) 
-- [ ] Eclipse IDE with **ABAP Development Tools (ADT)** plugin installed [Steps](https://developers.sap.com/tutorials/abap-install-adt)
+- [ ] ABAP Environment trial instance provisioned on BTP - [Steps](https://developers.sap.com/tutorials/abap-environment-trial-onboarding) 
+- [ ] Eclipse IDE with **ABAP Development Tools (ADT)** plugin installed - [Steps](https://developers.sap.com/tutorials/abap-install-adt)
 - [ ] Connected to your BTP ABAP system via ADT
 - [ ] Basic understanding of ABAP syntax and CDS views
 
@@ -116,32 +116,33 @@ Without a database table, there is no place to store data. The entire RAP stack 
 A RAP managed table must follow specific conventions:
 
 ```abap
-@EndUserText.label: 'Travel Data Table'
-@AbapCatalog.enhancement.category: #NOT_EXTENSIBLE
-@AbapCatalog.tableCategory: #TRANSPARENT
-@AbapCatalog.deliveryClass: #A
-@AbapCatalog.dataMaintenance: #RESTRICTED
-define table ztravel_d {
+@EndUserText.label : 'Products'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table znk_t_product {
 
-  key client      : abap.clnt not null;   -- Always first, system-managed
-  key travel_id   : /dmo/travel_id not null;  -- Your primary key
+  key client            : abap.clnt not null;
+  key pro_uuid          : sysuuid_x16 not null;
+  key product_id        : abap.char(10) not null;
+  description           : abap.char(40);
+  @Semantics.quantity.unitOfMeasure : 'znk_t_product.uom'
+  qty                   : abap.quan(8,3);
+  uom                   : abap.unit(3);
+  @Semantics.amount.currencyCode : 'znk_t_product.currency'
+  price                 : abap.curr(15,2);
+  currency              : abap.cuky;
+  mfg_date              : abap.datn;
+  exp_date              : abap.datn;
+  validdays             : abap.int4;
+  plant                 : abap.char(4);
+  local_created_by      : abp_creation_user;
+  local_created_at      : abp_creation_tstmpl;
+  local_last_changed_by : abp_locinst_lastchange_user;
+  local_last_changed_at : abp_locinst_lastchange_tstmpl;
+  last_changed_at       : abp_lastchange_tstmpl;
 
-  -- Administrative fields (auto-managed by RAP framework)
-  created_by      : abap_boolean;
-  created_at      : abp_creation_tstmpl;
-  last_changed_by : abp_lastchangedby;
-  last_changed_at : abp_lastchangedtstmpl;
-  local_last_changed_at : abp_locchangedtstmpl;  -- For ETag / concurrency
-
-  -- Business fields
-  agency_id       : /dmo/agency_id;
-  customer_id     : /dmo/customer_id;
-  begin_date      : /dmo/begin_date;
-  end_date        : /dmo/end_date;
-  description     : /dmo/description;
-  total_price     : /dmo/total_price;
-  currency_code   : /dmo/currency_code;
-  status          : /dmo/overall_status;
 }
 ```
 
@@ -150,12 +151,12 @@ define table ztravel_d {
 | Field | Type | Purpose |
 |---|---|---|
 | `client` | `abap.clnt` | SAP client field — mandatory first key in every table |
-| `travel_id` | Business key | Unique identifier for each travel record |
-| `created_by / created_at` | Admin fields | Auto-populated by RAP framework — track who created the record |
-| `last_changed_by / last_changed_at` | Admin fields | Auto-populated — track last modifier |
-| `local_last_changed_at` | ETag field | Used by RAP for **optimistic locking / concurrency control** |
+| `product_id` | Business key | Unique identifier for each product record |
+| `local_created_byy / local_created_at` | Admin fields | Auto-populated by RAP framework — track who created the record |
+| `local_last_changed_by / local_last_changed_at` | Admin fields | Auto-populated — track last modifier |
+| `last_changed_at` | ETag field | Used by RAP for **optimistic locking / concurrency control** |
 
-> **Important:** The `local_last_changed_at` field with type `abp_locchangedtstmpl` is critical for the ETag mechanism. When two users try to update the same record simultaneously, RAP compares this timestamp to detect conflicts and reject stale updates.
+> **Important:** The `last_changed_at` field with type `abp_lastchange_tstmpl` is critical for the ETag mechanism. When two users try to update the same record simultaneously, RAP compares this timestamp to detect conflicts and reject stale updates.
 
 ---
 
@@ -168,13 +169,13 @@ The draft table is a **temporary storage table** where incomplete, unsaved data 
 By convention, draft tables are named the same as the main table with a `_D` suffix:
 
 ```
-Main table   : ZTRAVEL        ← permanent, saved data
-Draft table  : ZTRAVEL_D      ← temporary, in-progress data
+Main table   : ZNK_T_PRODUCT        ← permanent, saved data
+Draft table  : ZNK_T_PRODUCT_D      ← temporary, in-progress data
 ```
 
 ### Why do we need a Draft Table?
 
-Imagine a user opens a "Create Travel" form in a Fiori app and starts filling in the fields — agency, customer, dates. Halfway through, their browser crashes, or they need to attend a meeting. Without draft handling, all their work is lost.
+Imagine a user opens a "Create Product" form in a Fiori app and starts filling in the fields — Plant, UOM, MFG & Exp dates. Halfway through, their browser crashes, or they need to attend a meeting. Without draft handling, all their work is lost.
 
 **With Draft Handling:**
 
@@ -198,16 +199,16 @@ You don't write the draft table manually field by field. You reference it in you
 
 ```abap
 -- In your Behavior Definition:
-define behavior for ZR_TravelTP alias Travel
-implementation in class ZBP_TravelTP unique
-
-persistent table ztravel          -- ← your main table
-draft table ztravel_d             -- ← your draft table (RAP manages this)
-
+managed implementation in class zbp_nk_product_i unique;
+strict ( 2 );
+with draft;
+define behavior for znk_product_I //alias <alias_name>
+persistent table znk_t_product               -- ← your main table
+draft table znk_t_product_d                  -- ← your draft table (RAP manages this)            
 ...
 ```
 
-When you activate the behavior definition, ADT automatically creates the draft table with the correct structure including draft-specific fields like `draftentityoperationcode`, `draftadministrativedatauuid`, etc.
+When you activate the behavior definition, ADT automatically creates the draft table with the correct structure.
 
 ### Draft Table vs Main Table — Side by Side
 
@@ -217,12 +218,12 @@ When you activate the behavior definition, ADT automatically creates the draft t
 | When data lands here | On "Save" action | On every field change (auto-save) |
 | Who can see it | All users | Only the user editing |
 | Deleted when | Never (business record) | On Save or Discard |
-| Named | `ZTRAVEL` | `ZTRAVEL_D` |
+| Named | `ZNK_T_PRODUCT` | `ZNK_T_PRODUCT_D` |
 | Created by | Developer manually | ADT generates from BDEF |
 
 ---
 
-## 👁️ Step 3 — Interface View (ZR_*)
+## 👁️ Step 3 — Interface View (Z*_I)
 
 ### What is the Interface View?
 
@@ -231,32 +232,52 @@ The Interface View is the **base CDS View Entity** that sits directly on top of 
 By convention, Interface Views are prefixed with `ZR_` (R = Root) for root entities or `ZI_` (I = Interface).
 
 ```abap
-@AccessControl.authorizationCheck: #CHECK
-@EndUserText.label: 'Travel Interface View'
-define root view entity ZR_TravelTP
-  as select from ztravel
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Product Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+define root view entity znk_product_I as select from znk_t_product
+association [0..1] to I_Currency as _Currency on $projection.Currency = _Currency.Currency
+association [ 0..1] to I_UnitOfMeasure as _Uom on $projection.Uom = _Uom.UnitOfMeasure
+
 {
-  key TravelID        as TravelID,
-      AgencyID        as AgencyID,
-      CustomerID      as CustomerID,
-      BeginDate       as BeginDate,
-      EndDate         as EndDate,
-      Description     as Description,
-      TotalPrice      as TotalPrice,
-      CurrencyCode    as CurrencyCode,
-      OverallStatus   as OverallStatus,
-
-      -- Administrative fields (mapped for RAP framework)
-      CreatedBy       as CreatedBy,
-      CreatedAt       as CreatedAt,
-      LastChangedBy   as LastChangedBy,
-      LastChangedAt   as LastChangedAt,
-      LocalLastChangedAt as LocalLastChangedAt,
-
-      -- Associations (for navigation / joins)
-      _Agency,
-      _Customer
+    key pro_uuid as ProUuid,
+    key product_id as ProductId,
+    description as Description,
+    @Semantics.quantity.unitOfMeasure: 'uom'
+    qty as Qty,
+    @Consumption.valueHelpDefinition: [{ 
+    entity.name: 'I_UnitOfMeasure',
+    entity.element: 'UnitOfMeasure',
+    useForValidation: true
+     }]
+    uom as Uom,
+    @Semantics.amount.currencyCode: 'currency'
+    price as Price,
+    @Consumption.valueHelpDefinition: [{ 
+    entity.name: 'I_Currency',
+    entity.element: 'Currency',
+    useForValidation: true
+     }]
+    currency as Currency,
+    mfg_date as MfgDate,
+    exp_date as ExpDate,
+    plant as Plant,
+    validdays as ValidDays,
+    @Semantics.user.createdBy: true
+    local_created_by as LocalCreatedBy,
+    @Semantics.systemDateTime.createdAt: true
+    local_created_at as LocalCreatedAt,
+    @Semantics.user.lastChangedBy: true
+    local_last_changed_by as LocalLastChangedBy,
+    @Semantics.systemDateTime.localInstanceLastChangedAt: true
+    local_last_changed_at as LocalLastChangedAt,
+    @Semantics.systemDateTime.lastChangedAt: true
+    last_changed_at as LastChangedAt,
+    _Uom as UomDetails,
+    _Currency as CurrencyDetails
+     // Make association public
 }
+
 ```
 
 ### Why do we need the Interface View?
@@ -273,10 +294,10 @@ The keyword `define root view entity` declares this as the top of a Business Obj
 The interface view has NO UI annotations, NO Fiori-specific logic. This means the same interface view can power:
 - A Fiori Elements app (via projection view → OData)
 - A remote API (via a different projection)
-- A background job (direct consumption)
+
 
 **4. Associations are defined here**
-Associations to related entities (Agency, Customer) are defined on the interface view so they are available to all consumers.
+Associations to related entities (Currency, UnitOfMeasure) are defined on the interface view so they are available to all Products.
 
 ### The `define root view entity` keyword
 
@@ -287,41 +308,54 @@ This keyword does two important things:
 
 ---
 
-## 🔍 Step 4 — Consumption View (ZC_*)
+## 🔍 Step 4 — Consumption View (Z*_C)
 
 ### What is the Consumption View?
 
 The Consumption View (also called the **Projection View**) sits on top of the Interface View and represents a **service-specific, tailored window** into the Business Object. It is what gets exposed to the outside world — via OData, via a Fiori app, via an API.
 
-By convention, Consumption Views are prefixed with `ZC_` (C = Consumption).
+By convention, Consumption Views are prefixed or suffixed with `ZC_` (C = Consumption).
 
 ```abap
-@Metadata.allowExtensions: true      -- Allows metadata extensions to add UI annotations
-@EndUserText.label: 'Travel Consumption View'
-define root view entity ZC_TravelTP
-  as projection on ZR_TravelTP       -- ← the key syntax: "as projection on"
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Product Consumption View'
+@Metadata.ignorePropagatedAnnotations: true
+@Metadata.allowExtensions: true
+define root view entity znk_product_c
+  provider contract transactional_query as projection on znk_product_I                           -- ← the key syntax: "as projection on"
+  association [1..1] to znk_product_I as _BaseEntity on $projection.ProUuid = _BaseEntity.ProUuid
+                                                    and $projection.ProductId = _BaseEntity.ProductId
 {
-  key TravelID,
-      AgencyID,
-      CustomerID,
-      BeginDate,
-      EndDate,
-      Description,
-      TotalPrice,
-      CurrencyCode,
-      OverallStatus,
-
-      -- Expose only what this service needs
-      CreatedBy,
-      CreatedAt,
-      LastChangedBy,
-      LastChangedAt,
-      LocalLastChangedAt,
-
-      -- Redirect associations to their own projection views
-      _Agency : redirected to ZC_AgencyTP,
-      _Customer : redirected to ZC_CustomerTP
+key ProUuid,
+key ProductId,
+Description,
+@Semantics.quantity.unitOfMeasure: 'Uom'
+Qty,
+@Consumption.valueHelpDefinition:[{ entity:{ name: 'I_UnitOfMeasure',
+                                             element: 'UnitOfMeasure'},
+                                    useForValidation: true }]
+Uom,
+@Semantics.amount.currencyCode: 'Currency'
+Price,
+@Consumption.valueHelpDefinition: [{ entity:{ name: 'I_Currency',
+                                     element: 'Currency' },
+                                     useForValidation: true  }]
+Currency,
+MfgDate,
+ExpDate,
+Plant,
+ValidDays,
+LocalCreatedBy,
+LocalCreatedAt,
+LocalLastChangedBy,
+LocalLastChangedAt,
+LastChangedAt,
+/* Associations */
+UomDetails,
+CurrencyDetails,
+_BaseEntity
 }
+
 ```
 
 ### Why do we need the Consumption View if we already have the Interface View?
@@ -347,10 +381,6 @@ This is what makes a view a projection view. It tells the RAP framework:
 - "The underlying BO's behavior definition applies through here"
 - "Compositions must be redirected to their own projection equivalents"
 
-### Redirection of Associations
-
-Notice `_Agency : redirected to ZC_AgencyTP`. This is mandatory for compositions in projection views. It ensures that when someone navigates from a Travel to its related Agency through OData, they navigate to the Agency's **projection** view (not its interface view), so the same service-specific rules apply all the way through the navigation.
-
 ---
 
 ## 🎨 Step 5 — Metadata Extension
@@ -361,43 +391,69 @@ A Metadata Extension (`.ddlx` file) is a separate repository object that holds *
 
 ```abap
 @Metadata.layer: #CORE
-annotate view ZC_TravelTP with
+@UI.headerInfo: { typeName: 'Product', typeNamePlural: 'Products' }
+annotate entity znk_product_c with
 {
-  @UI.facet: [
-    {
-      id: 'Travel',
-      purpose: #STANDARD,
-      type: #IDENTIFICATION_REFERENCE,
-      label: 'Travel Details',
-      position: 10
-    }
-  ]
 
-  @UI: {
-    lineItem: [{ position: 10, importance: #HIGH }],
-    identification: [{ position: 10 }]
-  }
-  TravelID;
+@UI.facet: [{ id: 'Info',
+              type: #IDENTIFICATION_REFERENCE,
+              label: 'Product',
+              position: 10}]
+  @UI:{ lineItem: [{position: 10, label: 'Product ID', importance: #HIGH,hidden: true},
+                   { type: #FOR_ACTION, dataAction: 'checkProductValidity', label: 'Check Validity', position: 10 ,emphasized: true},              --- Custom Button Added Here 
+                   { type: #FOR_ACTION, dataAction: 'clearValidDays',       label: 'Clear',          position: 20 ,emphasized: true}],             --- Custom Button Added Here   
+        identification: [{position: 10, label: 'Product ID', importance: #HIGH, hidden: true},
+                         { type: #FOR_ACTION, dataAction: 'checkProductValidity', label: 'Check Validity', position: 10 }] }
+  ProUuid;
+  @UI:{ lineItem: [{position: 20, label: 'Product ID', importance: #HIGH}],
+        identification: [{position: 20, label: 'Product ID', importance: #HIGH}],
+        selectionField: [{ position: 10  }] }
+  ProductId;
+  @UI:{ lineItem: [{position: 30, label: 'Description', importance: #HIGH}],
+        identification: [{position: 30, label: 'Description', importance: #HIGH}],
+        selectionField: [{ position: 30  }] }
+  Description;
+   @UI:{ lineItem: [{position: 31, label: 'Qty', importance: #HIGH}],
+        identification: [{position: 31, label: 'Quantity', importance: #HIGH}] }
+  Qty;
+  @UI:{ lineItem: [{position: 40, label: 'UOM', importance: #HIGH, hidden: true}],
+        identification: [{position: 40, label: 'Unit Of Measurement', importance: #HIGH, hidden: true}] }
+  Uom;
+  @UI:{ lineItem: [{position: 50, label: 'Price', importance: #HIGH}],
+        identification: [{position: 50, label: 'Price', importance: #HIGH}] }
+  Price;
+  @UI:{ lineItem: [{position: 60, label: 'Currency', importance: #HIGH,hidden: true}],
+        identification: [{position: 60, label: 'Currency', importance: #HIGH, hidden: true}] }
+  Currency;
+  @UI:{ lineItem: [{position: 70, label: 'MFG Date', importance: #HIGH, hidden: true}],
+        identification: [{position: 70, label: 'Manufacture Date', importance: #HIGH}] }
+  MfgDate;
+  @UI:{ lineItem: [{position: 80, label: 'Exp. Date', importance: #HIGH, hidden: true}],
+        identification: [{position: 80, label: 'Expiry Date', importance: #HIGH}] }
+  ExpDate;
+  @UI:{ lineItem: [{position: 90, label: 'Plant', importance: #HIGH}],
+        identification: [{position: 90, label: 'Plant', importance: #HIGH}] }
+  Plant;
+   @UI:{ lineItem: [{position: 91, label: 'Valid Days', importance: #HIGH}],
+        identification: [{position: 91, label: 'Valid Days', importance: #HIGH}],
+        selectionField: [{ position: 91  }] }
+  ValidDays;
+  @UI:{ lineItem: [{position: 100, label: 'Created By', importance: #HIGH}],
+        identification: [{position: 100, label: 'Created By', importance: #HIGH}] }
+  LocalCreatedBy;
+  @UI:{ lineItem: [{position: 110, label: 'Created At', importance: #HIGH }],
+        identification: [{position: 110, label: 'Created At', importance: #HIGH}] }
+  LocalCreatedAt;
+  @UI:{ lineItem: [{position: 120, label: 'Last Changed By', importance: #HIGH, hidden: true }],
+        identification: [{position: 120, label: 'Last Changed By', importance: #HIGH}] }
+  LocalLastChangedBy;
+  @UI:{ lineItem: [{position: 130, label: 'Last Changed At', importance: #HIGH, hidden: true}],
+        identification: [{position: 130, label: 'Last Changed At', importance: #HIGH}] }
+  LocalLastChangedAt;
+  @UI:{ lineItem: [{position: 140, label: 'Last Changed At', importance: #HIGH, hidden: true}],
+        identification: [{position: 140, label: 'Product ID', importance: #HIGH, hidden: true}] }
+  LastChangedAt;
 
-  @UI: {
-    lineItem: [{ position: 20, importance: #HIGH }],
-    identification: [{ position: 20 }],
-    selectionField: [{ position: 20 }]
-  }
-  AgencyID;
-
-  @UI: {
-    lineItem: [{ position: 30, importance: #HIGH }],
-    identification: [{ position: 30 }]
-  }
-  CustomerID;
-
-  @UI: {
-    lineItem: [{ position: 70, importance: #HIGH,
-      criticality: 'OverallStatusCriticality' }],
-    identification: [{ position: 70 }]
-  }
-  OverallStatus;
 }
 ```
 
@@ -412,9 +468,9 @@ The CDS view defines WHAT data exists. The Metadata Extension defines HOW it loo
 The `@Metadata.layer` annotation supports a hierarchy:
 ```
 #CORE          ← SAP / developer defines base UI
-#CUSTOMER_BASE ← Customer adds their annotations
-#PARTNER       ← Partner (SI) adds their annotations  
-#CUSTOMER      ← End customer final customization
+#CUSTOMER      ← Customer adds their annotations
+#PARTNER       ← Relates to a partner extension of a product 
+#INDUSTRY      ← Relates to an industry-specific extension of a product (SAP Industry Solution)
 ```
 Lower layers can be overridden by higher layers without modifying the original files. This is the foundation of SAP's extensibility model.
 
@@ -428,9 +484,9 @@ If you put `@UI.lineItem` directly in the CDS view, those annotations are baked 
 | `@UI.lineItem` | Show field in the list table | List page columns |
 | `@UI.identification` | Show field in the detail form | Object page fields |
 | `@UI.selectionField` | Show field in the filter bar | Search filters |
-| `@UI.facet` | Define sections/tabs on the object page | "Travel Details" tab |
+| `@UI.facet` | Define sections/tabs on the object page | "Product Details" tab |
 | `@UI.hidden` | Hide field from UI entirely | Internal fields |
-| `@UI.dataAction` | Add a button for a custom action | "Accept Travel" button |
+| `@UI.dataAction` | Add a button for a custom action | "Valid Days" button |
 
 ---
 
@@ -442,7 +498,7 @@ A Behavior Definition (BDEF) is a repository object that defines **what operatio
 - Can this BO be created, updated, deleted?
 - Which fields are read-only or mandatory?
 - Does it support draft handling?
-- What custom actions exist (like "Accept Travel")?
+- What custom actions exist (like "Valid Days")?
 - How are primary keys generated?
 
 ### Interface View Behavior Definition
@@ -450,60 +506,65 @@ A Behavior Definition (BDEF) is a repository object that defines **what operatio
 The base BDEF sits on the Interface View and defines the **complete set of capabilities** of the BO:
 
 ```abap
-managed implementation in class ZBP_TravelTP unique;
+managed implementation in class zbp_nk_product_i unique;
 strict ( 2 );
 with draft;
-
-define behavior for ZR_TravelTP alias Travel
-implementation in class ZBP_TravelTP unique
-
-persistent table ztravel
-draft table ztravel_d
-
-etag master LocalLastChangedAt          -- ETag for concurrency control
-lock master total etag LastChangedAt    -- Locking mechanism
-
-authorization master( global )
-
+define behavior for znk_product_I //alias <alias_name>
+persistent table znk_t_product
+draft table znk_t_product_d
+lock master                                                         -- Locking mechanism
+total etag LastChangedAt
+authorization master ( global )
+etag master LastChangedAt                                           -- ETag for concurrency control
 {
-  -- Standard CRUD operations (framework handles automatically in managed)
+
+ -- Field controls
+ field ( mandatory : create ) ProductId;                            -- Makes Mandatory when create
+ field ( readonly )                                                 -- Makes non-editable
+ LocalCreatedAt,
+ LocalCreatedBy,
+ LocalLastChangedAt,
+ LocalLastChangedBy,
+ LastChangedAt;
+ field ( numbering : managed ) ProUuid;                             -- Makes Numbering Managed
+ field ( readonly : update ) ProUuid, ProductId;                    -- Makes non-editable when update
+
+   -- Standard CRUD operations (framework handles automatically in managed)
   create;
   update;
   delete;
 
-  -- Draft actions (framework-generated)
+  -- Custom actions (developer implements)
+  action  ( features : instance ) checkProductValidity result [1] $self;
+  action  ( features : instance ) clearValidDays result [1] $self;
+
+  -- Draft related Actions
   draft action Edit;
-  draft action Activate;
+  draft action Activate optimized;
   draft action Discard;
   draft action Resume;
   draft determine action Prepare;
 
-  -- Field controls
-  field ( readonly ) TravelID;                       -- Auto-generated, never editable
-  field ( readonly : update ) AgencyID, CustomerID;  -- Set on create, locked on update
-  field ( mandatory ) BeginDate, EndDate, Status;    -- Required fields
-
-  -- Auto-numbering (framework generates UUID)
-  mapping for ztravel corresponding
-  {
-    TravelID = travel_id;
-    AgencyID = agency_id;
-    ...
-  }
-
-  -- Custom validations (developer implements)
-  validation validateDates   on save { field BeginDate, EndDate; }
-  validation validateStatus  on save { field OverallStatus; }
-
-  -- Custom determinations (developer implements)
-  determination setInitialStatus on modify { create; }
-
-  -- Custom actions (developer implements)
-  action ( features : instance ) acceptTravel result [1] $self;
-  action ( features : instance ) rejectTravel result [1] $self;
-
-  -- Associations
-  association _Booking { create; with draft; }
+  -- Mapping is very important to store the values to DB 
+  mapping for znk_t_product
+    {
+      ProUuid            = pro_uuid;
+      ProductId          = product_id;
+      Description        = description;
+      Qty                = qty;
+      Uom                = uom;
+      Price              = price;
+      Currency           = currency;
+      MfgDate            = mfg_date;
+      ExpDate            = exp_date;
+      Plant              = plant;
+      ValidDays          = validdays;
+      LocalCreatedBy     = local_created_by;
+      LocalCreatedAt     = local_created_at;
+      LocalLastChangedAt = local_last_changed_at;
+      LocalLastChangedBy = local_last_changed_by;
+      LastChangedAt      = last_changed_at;
+    }
 }
 ```
 
@@ -521,9 +582,9 @@ authorization master( global )
 
 **`validation`** — A method you implement in the Behavior Implementation class. Called by the framework before save. Return error messages to block the save.
 
-**`determination`** — A method that auto-runs when specific fields change. Used for defaulting values (e.g., set status to "Open" when a travel is created).
+**`determination`** — A method that auto-runs when specific fields change. Used for defaulting values (e.g., set status to "Open" when a Product is created).
 
-**`action`** — A custom operation beyond standard CRUD. Adds a button in the Fiori UI. Example: "Accept Travel" changes status to Accepted.
+**`action`** — A custom operation beyond standard CRUD. Adds a button in the Fiori UI. Example: "Valid Days" changes status to Accepted.
 
 ---
 
@@ -538,24 +599,22 @@ projection;
 strict ( 2 );
 use draft;
 
-define behavior for ZC_TravelTP alias Travel
+define behavior for znk_product_c //alias <alias_name>
 {
-  use create;    -- Expose create to this service
-  use update;    -- Expose update to this service
-  use delete;    -- Expose delete to this service
+  use create;                           -- Expose create to this service
+  use update;                           -- Expose update to this service
+  use delete;                           -- Expose delete to this service
 
   use action Edit;
   use action Activate;
   use action Discard;
-  use action Resume;
   use action Prepare;
+  use action Resume;
+
 
   -- Expose only the custom actions this service needs
-  use action acceptTravel;
-  use action rejectTravel;
-
-  -- Child entity
-  use association _Booking { create; with draft; }
+  use action checkProductValidity;
+  use action clearValidDays;
 }
 ```
 
@@ -563,14 +622,14 @@ define behavior for ZC_TravelTP alias Travel
 
 | | Interface BDEF | Projection BDEF |
 |---|---|---|
-| Sits on | Interface View (ZR_*) | Consumption View (ZC_*) |
+| Sits on | Interface View (Z*_R) | Consumption View (Z*_C) |
 | Contains | ALL possible operations | SUBSET for this service |
 | Implementation | Developer writes code here | Just `use` statements — no code |
 | Reusability | One per BO | One per service/app |
 | Analogy | Full employee record | Role-specific access form |
 
 Imagine you have two apps using the same Travel BO:
-- **Admin App** → projection BDEF exposes: create, update, delete, acceptTravel, rejectTravel
+- **Admin App** → projection BDEF exposes: create, update, delete, ValidDays, Clear
 - **Read-Only Report App** → projection BDEF exposes: nothing (read-only by omission)
 
 Same base BO, completely different service behavior — controlled purely by the projection BDEF.
@@ -583,17 +642,15 @@ Same base BO, completely different service behavior — controlled purely by the
 
 The Behavior Implementation is an **ABAP class** that contains the actual code for all custom operations defined in the base Behavior Definition — validations, determinations, and actions. In managed scenarios, you do NOT write code for standard CRUD — the framework handles that. You only write code for your custom business logic.
 
-The class is named in the BDEF with `implementation in class ZBP_TravelTP unique`.
+The class is named in the BDEF with `implementation in class zbp_nk_product_i unique;`.
 
 ```abap
-CLASS zbp_traveltp DEFINITION
-  PUBLIC
-  ABSTRACT
-  FINAL
-  FOR BEHAVIOR OF zr_traveltp.
+
+"! <p class="shorttext synchronized" lang="en">Behavior Implementation for ZNK_PRODUCT_I</p>
+CLASS zbp_nk_product_i DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF znk_product_i.
 ENDCLASS.
 
-CLASS zbp_traveltp IMPLEMENTATION.
+CLASS zbp_nk_product_i IMPLEMENTATION.
 ENDCLASS.
 ```
 
@@ -602,48 +659,104 @@ The actual logic sits in **local classes** inside the implementation class's `.l
 ### Validation Example — validateDates
 
 ```abap
-METHOD validateDates.
-  " Read the fields we need to validate
-  READ ENTITIES OF zr_traveltp IN LOCAL MODE
-    ENTITY Travel
-      FIELDS ( BeginDate EndDate )
-      WITH CORRESPONDING #( keys )
-    RESULT DATA(lt_travel)
-    FAILED failed.
 
-  LOOP AT lt_travel INTO DATA(ls_travel).
+CLASS lhc_znk_product_I DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+    REQUEST requested_authorizations FOR znk_product_I RESULT result.
+    METHODS checkProductValidity FOR MODIFY
+       keys FOR ACTION znk_product_I~checkProductValidity RESULT result.
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      keys REQUEST requested_features FOR znk_product_I RESULT result.
+    METHODS clearvaliddays FOR MODIFY
+       keys FOR ACTION znk_product_i~clearvaliddays RESULT result.
+ENDCLASS.
 
-    " Validate begin date is not in the past
-    IF ls_travel-BeginDate < cl_abap_context_info=>get_system_date( ).
-      APPEND VALUE #(
-        %tky = ls_travel-%tky
-      ) TO failed-travel.
+CLASS lhc_znk_product_I IMPLEMENTATION.
+  METHOD get_global_authorizations.
+  ENDMETHOD.
 
-      APPEND VALUE #(
-        %tky        = ls_travel-%tky
-        %msg        = new_message_with_text(
-                        severity = if_abap_behv_message=>severity-error
-                        text     = 'Begin date cannot be in the past' )
-        %element-BeginDate = if_abap_behv=>mk-on
-      ) TO reported-travel.
-    ENDIF.
+  METHOD checkProductValidity.
 
-    " Validate end date is after begin date
-    IF ls_travel-EndDate < ls_travel-BeginDate.
-      APPEND VALUE #(
-        %tky = ls_travel-%tky
-      ) TO failed-travel.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE                               --Read entries from Interface view to lt_products
+        ENTITY znk_product_I
+        FIELDS ( MfgDate ExpDate )
+        WITH CORRESPONDING #( keys )
+        RESULT DATA(lt_products)
+        FAILED DATA(ls_failed).
 
-      APPEND VALUE #(
-        %tky        = ls_travel-%tky
-        %msg        = new_message_with_text(
-                        severity = if_abap_behv_message=>severity-error
-                        text     = 'End date must be after begin date' )
-        %element-EndDate = if_abap_behv=>mk-on
-      ) TO reported-travel.
-    ENDIF.
-  ENDLOOP.
-ENDMETHOD.
+    MODIFY ENTITIES OF znk_product_I IN LOCAL MODE                             --Modify entries from Interface view to lt_products
+        ENTITY znk_product_I
+        UPDATE FIELDS ( ValidDays )
+        WITH VALUE #(
+          FOR ls IN lt_products
+          LET lv_days = CONV i( ls-ExpDate - ls-MfgDate )
+          IN ( %tky      = ls-%tky
+               ValidDays = lv_days ) ).
+
+    LOOP AT lt_products INTO DATA(ls_product).                                  --Validation on to lt_products
+      IF ls_product-ExpDate <= ls_product-MfgDate.
+        APPEND VALUE #(
+          %tky = ls_product-%tky
+          %msg = new_message_with_text(
+                   severity = if_abap_behv_message=>severity-error
+                   text     = 'Expiry Date must be after Manufacturing Date!' )
+        ) TO reported-znk_product_i.
+      ENDIF.
+    ENDLOOP.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+                                   ENTITY znk_product_I
+                                   ALL FIELDS
+                                   WITH CORRESPONDING #( keys )
+                                   RESULT DATA(lt_result).
+
+    result = VALUE #( FOR ls IN lt_result                                        --Return the modified entries to result
+                      ( %tky   = ls-%tky
+                        %param = ls ) ).   
+
+  ENDMETHOD.
+
+  METHOD get_instance_features.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+     ENTITY znk_product_I
+     FIELDS ( ProductId )
+     WITH CORRESPONDING #( keys )
+     RESULT DATA(lt_products)
+     FAILED DATA(ls_failed).
+
+    result = VALUE #( FOR ls IN lt_products
+                      ( %tky                          = ls-%tky
+                        %action-checkProductValidity  = if_abap_behv=>fc-o-enabled ) ).
+  ENDMETHOD.
+
+  METHOD clearValidDays.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        FIELDS ( MfgDate ExpDate )
+        WITH CORRESPONDING #( keys )
+        RESULT DATA(lt_products)
+        FAILED DATA(ls_failed).
+
+    MODIFY ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        UPDATE FIELDS ( ValidDays )
+        WITH VALUE #(
+          FOR ls IN lt_products
+          LET lv_days = 0
+          IN ( %tky      = ls-%tky
+               ValidDays = lv_days ) ).
+
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+                      ENTITY znk_product_I
+                      ALL FIELDS
+                      WITH CORRESPONDING #( keys )
+                      RESULT DATA(lt_result).
+    result = VALUE #( FOR ls IN lt_result
+        ( %tky   = ls-%tky
+          %param = ls ) ).   
+  ENDMETHOD.
+
+ENDCLASS.
 ```
 
 ### Determination Example — setInitialStatus
@@ -676,31 +789,48 @@ METHOD setInitialStatus.
 ENDMETHOD.
 ```
 
-### Action Example — acceptTravel
+### Action Example — checkProductValidity
 
 ```abap
-METHOD acceptTravel.
-  " Change status to 'Accepted'
-  MODIFY ENTITIES OF zr_traveltp IN LOCAL MODE
-    ENTITY Travel
-      UPDATE FIELDS ( OverallStatus )
-      WITH VALUE #( FOR key IN keys (
-        %tky          = key-%tky
-        OverallStatus = 'A'   " A = Accepted
-      ) )
-    FAILED   failed
-    REPORTED reported.
+METHOD checkProductValidity.
 
-  " Read back the updated records to return as result
-  READ ENTITIES OF zr_traveltp IN LOCAL MODE
-    ENTITY Travel ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(lt_travel).
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        FIELDS ( MfgDate ExpDate )
+        WITH CORRESPONDING #( keys )
+        RESULT DATA(lt_products)
+        FAILED DATA(ls_failed).
 
-  result = VALUE #( FOR ls_travel IN lt_travel (
-    %tky   = ls_travel-%tky
-    %param = ls_travel
-  ) ).
-ENDMETHOD.
+    MODIFY ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        UPDATE FIELDS ( ValidDays )
+        WITH VALUE #(
+          FOR ls IN lt_products
+          LET lv_days = CONV i( ls-ExpDate - ls-MfgDate )
+          IN ( %tky      = ls-%tky
+               ValidDays = lv_days ) ).
+
+    LOOP AT lt_products INTO DATA(ls_product).
+      IF ls_product-ExpDate <= ls_product-MfgDate.
+        APPEND VALUE #(
+          %tky = ls_product-%tky
+          %msg = new_message_with_text(
+                   severity = if_abap_behv_message=>severity-error
+                   text     = 'Expiry Date must be after Manufacturing Date!' )
+        ) TO reported-znk_product_i.
+      ENDIF.
+    ENDLOOP.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+                                   ENTITY znk_product_I
+                                   ALL FIELDS
+                                   WITH CORRESPONDING #( keys )
+                                   RESULT DATA(lt_result).
+
+    result = VALUE #( FOR ls IN lt_result
+                      ( %tky   = ls-%tky
+                        %param = ls ) ).   
+
+  ENDMETHOD.
 ```
 
 ### Important RAP-specific ABAP concepts
@@ -724,12 +854,9 @@ ENDMETHOD.
 Defines which CDS entities are exposed and under what names:
 
 ```abap
-@EndUserText.label: 'Travel OData Service'
-define service ZUI_TravelTP {
-  expose ZC_TravelTP    as Travel;
-  expose ZC_BookingTP   as Booking;
-  expose ZC_AgencyTP    as Agency;
-  expose ZC_CustomerTP  as Customer;
+@EndUserText.label: 'Service Definition for Consumption view'
+define service Znk_sd_product {
+  expose znk_product_c;
 }
 ```
 
@@ -741,7 +868,7 @@ The Service Binding ties a Service Definition to a specific **protocol and usage
 - **Activate** the binding to get the OData service URL
 - Use **"Preview"** in ADT to open the Fiori Elements app directly
 
-Once activated, your Travel BO is fully functional as a Fiori Elements List Report + Object Page app — with list, filter, create, edit, draft, save, and all your custom actions.
+Once activated, your Product BO is fully functional as a Fiori Elements List Report + Object Page app — with list, filter, create, edit, draft, save, and all your custom actions.
 
 ---
 
@@ -776,7 +903,7 @@ The separation of Interface and Consumption layers is the most important design 
 In this managed scenario, the RAP framework wrote all the database interaction code for you. You only wrote:
 - Validation logic (validateDates)
 - Determination logic (setInitialStatus)
-- Action logic (acceptTravel, rejectTravel)
+- Action logic (checkProductValidity, Clear)
 
 Everything else — INSERT, UPDATE, DELETE, draft handling, locking, ETag — was handled by the framework automatically.
 
@@ -807,8 +934,8 @@ Found an error or want to improve this guide? Feel free to:
 
 **Naveen Kumar**
 SAP ABAP Developer | BTP Explorer
-- SAP Community Profile: [community.sap.com](https://community.sap.com)
-- GitHub: [github.com](https://github.com)
+- SAP Community Profile: [community.sap.com](https://profile.sap.com/u/iamnaveen)
+- GitHub: [github.com](https://github.com/knaveennavi)
 
 ---
 
