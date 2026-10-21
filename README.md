@@ -12,7 +12,7 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [Architecture](#architecture)
+- [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
 - [Step 1 — Database Table](#-step-1--database-table-main-table)
 - [Step 2 — Draft Table](#-step-2--draft-table-why-it-exists)
