@@ -1,0 +1,45 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Product Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+define root view entity znk_product_I as select from znk_t_product
+association [0..1] to I_Currency as _Currency on $projection.Currency = _Currency.Currency
+association [ 0..1] to I_UnitOfMeasure as _Uom on $projection.Uom = _Uom.UnitOfMeasure
+
+{
+    key pro_uuid as ProUuid,
+    key product_id as ProductId,
+    description as Description,
+    @Semantics.quantity.unitOfMeasure: 'uom'
+    qty as Qty,
+    @Consumption.valueHelpDefinition: [{ 
+    entity.name: 'I_UnitOfMeasure',
+    entity.element: 'UnitOfMeasure',
+    useForValidation: true
+     }]
+    uom as Uom,
+    @Semantics.amount.currencyCode: 'currency'
+    price as Price,
+    @Consumption.valueHelpDefinition: [{ 
+    entity.name: 'I_Currency',
+    entity.element: 'Currency',
+    useForValidation: true
+     }]
+    currency as Currency,
+    mfg_date as MfgDate,
+    exp_date as ExpDate,
+    plant as Plant,
+    validdays as ValidDays,
+    @Semantics.user.createdBy: true
+    local_created_by as LocalCreatedBy,
+    @Semantics.systemDateTime.createdAt: true
+    local_created_at as LocalCreatedAt,
+    @Semantics.user.lastChangedBy: true
+    local_last_changed_by as LocalLastChangedBy,
+    @Semantics.systemDateTime.localInstanceLastChangedAt: true
+    local_last_changed_at as LocalLastChangedAt,
+    @Semantics.systemDateTime.lastChangedAt: true
+    last_changed_at as LastChangedAt,
+    _Uom as UomDetails,
+    _Currency as CurrencyDetails
+     // Make association public
+}

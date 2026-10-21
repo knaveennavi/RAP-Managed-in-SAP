@@ -1,0 +1,38 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Product Consumption View'
+@Metadata.ignorePropagatedAnnotations: true
+@Metadata.allowExtensions: true
+define root view entity znk_product_c
+  provider contract transactional_query as projection on znk_product_I
+  association [1..1] to znk_product_I as _BaseEntity on $projection.ProUuid = _BaseEntity.ProUuid
+                                                    and $projection.ProductId = _BaseEntity.ProductId
+{
+key ProUuid,
+key ProductId,
+Description,
+@Semantics.quantity.unitOfMeasure: 'Uom'
+Qty,
+@Consumption.valueHelpDefinition:[{ entity:{ name: 'I_UnitOfMeasure',
+                                             element: 'UnitOfMeasure'},
+                                    useForValidation: true }]
+Uom,
+@Semantics.amount.currencyCode: 'Currency'
+Price,
+@Consumption.valueHelpDefinition: [{ entity:{ name: 'I_Currency',
+                                     element: 'Currency' },
+                                     useForValidation: true  }]
+Currency,
+MfgDate,
+ExpDate,
+Plant,
+ValidDays,
+LocalCreatedBy,
+LocalCreatedAt,
+LocalLastChangedBy,
+LocalLastChangedAt,
+LastChangedAt,
+/* Associations */
+UomDetails,
+CurrencyDetails,
+_BaseEntity
+}

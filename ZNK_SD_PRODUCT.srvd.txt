@@ -1,0 +1,4 @@
+@EndUserText.label: 'Service Definition for Consumption view'
+define service Znk_sd_product {
+  expose znk_product_c;
+}

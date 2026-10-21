@@ -1,0 +1,28 @@
+@EndUserText.label : 'Products'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table znk_t_product {
+
+  key client            : abap.clnt not null;
+  key pro_uuid          : sysuuid_x16 not null;
+  key product_id        : abap.char(10) not null;
+  description           : abap.char(40);
+  @Semantics.quantity.unitOfMeasure : 'znk_t_product.uom'
+  qty                   : abap.quan(8,3);
+  uom                   : abap.unit(3);
+  @Semantics.amount.currencyCode : 'znk_t_product.currency'
+  price                 : abap.curr(15,2);
+  currency              : abap.cuky;
+  mfg_date              : abap.datn;
+  exp_date              : abap.datn;
+  validdays             : abap.int4;
+  plant                 : abap.char(4);
+  local_created_by      : abp_creation_user;
+  local_created_at      : abp_creation_tstmpl;
+  local_last_changed_by : abp_locinst_lastchange_user;
+  local_last_changed_at : abp_locinst_lastchange_tstmpl;
+  last_changed_at       : abp_lastchange_tstmpl;
+
+}

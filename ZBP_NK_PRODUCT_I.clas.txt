@@ -1,0 +1,101 @@
+CLASS lhc_znk_product_I DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+    REQUEST requested_authorizations FOR znk_product_I RESULT result.
+
+
+    METHODS checkProductValidity FOR MODIFY
+       keys FOR ACTION znk_product_I~checkProductValidity RESULT result.
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      keys REQUEST requested_features FOR znk_product_I RESULT result.
+    METHODS clearvaliddays FOR MODIFY
+       keys FOR ACTION znk_product_i~clearvaliddays RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_znk_product_I IMPLEMENTATION.
+  METHOD get_global_authorizations.
+  ENDMETHOD.
+
+  METHOD checkProductValidity.
+
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        FIELDS ( MfgDate ExpDate )
+        WITH CORRESPONDING #( keys )
+        RESULT DATA(lt_products)
+        FAILED DATA(ls_failed).
+
+    MODIFY ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        UPDATE FIELDS ( ValidDays )
+        WITH VALUE #(
+          FOR ls IN lt_products
+          LET lv_days = CONV i( ls-ExpDate - ls-MfgDate )
+          IN ( %tky      = ls-%tky
+               ValidDays = lv_days ) ).
+
+    LOOP AT lt_products INTO DATA(ls_product).
+      IF ls_product-ExpDate <= ls_product-MfgDate.
+        APPEND VALUE #(
+          %tky = ls_product-%tky
+          %msg = new_message_with_text(
+                   severity = if_abap_behv_message=>severity-error
+                   text     = 'Expiry Date must be after Manufacturing Date!' )
+        ) TO reported-znk_product_i.
+      ENDIF.
+    ENDLOOP.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+                                   ENTITY znk_product_I
+                                   ALL FIELDS
+                                   WITH CORRESPONDING #( keys )
+                                   RESULT DATA(lt_result).
+
+    result = VALUE #( FOR ls IN lt_result
+                      ( %tky   = ls-%tky
+                        %param = ls ) ).   " ✅ MISSING in your code
+
+  ENDMETHOD.
+
+  METHOD get_instance_features.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+     ENTITY znk_product_I
+     FIELDS ( ProductId )
+     WITH CORRESPONDING #( keys )
+     RESULT DATA(lt_products)
+     FAILED DATA(ls_failed).
+
+    result = VALUE #( FOR ls IN lt_products
+                      ( %tky                          = ls-%tky
+                        %action-checkProductValidity  = if_abap_behv=>fc-o-enabled ) ).
+  ENDMETHOD.
+
+  METHOD clearValidDays.
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        FIELDS ( MfgDate ExpDate )
+        WITH CORRESPONDING #( keys )
+        RESULT DATA(lt_products)
+        FAILED DATA(ls_failed).
+
+    MODIFY ENTITIES OF znk_product_I IN LOCAL MODE
+        ENTITY znk_product_I
+        UPDATE FIELDS ( ValidDays )
+        WITH VALUE #(
+          FOR ls IN lt_products
+          LET lv_days = 0
+          IN ( %tky      = ls-%tky
+               ValidDays = lv_days ) ).
+
+    READ ENTITIES OF znk_product_I IN LOCAL MODE
+                      ENTITY znk_product_I
+                      ALL FIELDS
+                      WITH CORRESPONDING #( keys )
+                      RESULT DATA(lt_result).
+    result = VALUE #( FOR ls IN lt_result
+        ( %tky   = ls-%tky
+          %param = ls ) ).   " ✅ MISSING in your code
+  ENDMETHOD.
+
+ENDCLASS.

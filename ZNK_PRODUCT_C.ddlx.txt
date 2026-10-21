@@ -1,0 +1,65 @@
+@Metadata.layer: #CORE
+@UI.headerInfo: { typeName: 'Product', typeNamePlural: 'Products' }
+annotate entity znk_product_c with
+{
+
+@UI.facet: [{ id: 'Info',
+              type: #IDENTIFICATION_REFERENCE,
+              label: 'Product',
+              position: 10}]
+  @UI:{ lineItem: [{position: 10, label: 'Product ID', importance: #HIGH,hidden: true},
+                   { type: #FOR_ACTION, dataAction: 'checkProductValidity', label: 'Check Validity', position: 10 ,emphasized: true},
+                   { type: #FOR_ACTION, dataAction: 'clearValidDays', label: 'Clear', position: 20 ,emphasized: true}],
+        identification: [{position: 10, label: 'Product ID', importance: #HIGH, hidden: true},
+                         { type: #FOR_ACTION, dataAction: 'checkProductValidity', label: 'Check Validity', position: 10 }] }
+  ProUuid;
+  @UI:{ lineItem: [{position: 20, label: 'Product ID', importance: #HIGH}],
+        identification: [{position: 20, label: 'Product ID', importance: #HIGH}],
+        selectionField: [{ position: 10  }] }
+  ProductId;
+  @UI:{ lineItem: [{position: 30, label: 'Description', importance: #HIGH}],
+        identification: [{position: 30, label: 'Description', importance: #HIGH}],
+        selectionField: [{ position: 30  }] }
+  Description;
+   @UI:{ lineItem: [{position: 31, label: 'Qty', importance: #HIGH}],
+        identification: [{position: 31, label: 'Quantity', importance: #HIGH}] }
+  Qty;
+  @UI:{ lineItem: [{position: 40, label: 'UOM', importance: #HIGH, hidden: true}],
+        identification: [{position: 40, label: 'Unit Of Measurement', importance: #HIGH, hidden: true}] }
+  Uom;
+  @UI:{ lineItem: [{position: 50, label: 'Price', importance: #HIGH}],
+        identification: [{position: 50, label: 'Price', importance: #HIGH}] }
+  Price;
+  @UI:{ lineItem: [{position: 60, label: 'Currency', importance: #HIGH,hidden: true}],
+        identification: [{position: 60, label: 'Currency', importance: #HIGH, hidden: true}] }
+  Currency;
+  @UI:{ lineItem: [{position: 70, label: 'MFG Date', importance: #HIGH, hidden: true}],
+        identification: [{position: 70, label: 'Manufacture Date', importance: #HIGH}] }
+  MfgDate;
+  @UI:{ lineItem: [{position: 80, label: 'Exp. Date', importance: #HIGH, hidden: true}],
+        identification: [{position: 80, label: 'Expiry Date', importance: #HIGH}] }
+  ExpDate;
+  @UI:{ lineItem: [{position: 90, label: 'Plant', importance: #HIGH}],
+        identification: [{position: 90, label: 'Plant', importance: #HIGH}] }
+  Plant;
+   @UI:{ lineItem: [{position: 91, label: 'Valid Days', importance: #HIGH}],
+        identification: [{position: 91, label: 'Valid Days', importance: #HIGH}],
+        selectionField: [{ position: 91  }] }
+  ValidDays;
+  @UI:{ lineItem: [{position: 100, label: 'Created By', importance: #HIGH}],
+        identification: [{position: 100, label: 'Created By', importance: #HIGH}] }
+  LocalCreatedBy;
+  @UI:{ lineItem: [{position: 110, label: 'Created At', importance: #HIGH }],
+        identification: [{position: 110, label: 'Created At', importance: #HIGH}] }
+  LocalCreatedAt;
+  @UI:{ lineItem: [{position: 120, label: 'Last Changed By', importance: #HIGH, hidden: true }],
+        identification: [{position: 120, label: 'Last Changed By', importance: #HIGH}] }
+  LocalLastChangedBy;
+  @UI:{ lineItem: [{position: 130, label: 'Last Changed At', importance: #HIGH, hidden: true}],
+        identification: [{position: 130, label: 'Last Changed At', importance: #HIGH}] }
+  LocalLastChangedAt;
+  @UI:{ lineItem: [{position: 140, label: 'Last Changed At', importance: #HIGH, hidden: true}],
+        identification: [{position: 140, label: 'Product ID', importance: #HIGH, hidden: true}] }
+  LastChangedAt;
+
+}

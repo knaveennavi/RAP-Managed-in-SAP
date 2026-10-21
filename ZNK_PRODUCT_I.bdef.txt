@@ -1,0 +1,56 @@
+managed implementation in class zbp_nk_product_i unique;
+strict ( 2 );
+with draft;
+define behavior for znk_product_I //alias <alias_name>
+persistent table znk_t_product
+draft table znk_t_product_d
+lock master
+total etag LastChangedAt
+authorization master ( global )
+etag master LastChangedAt
+{
+ field ( mandatory : create ) ProductId;
+ field ( readonly )
+ LocalCreatedAt,
+ LocalCreatedBy,
+ LocalLastChangedAt,
+ LocalLastChangedBy,
+ LastChangedAt;
+ field ( numbering : managed ) ProUuid;
+
+  create;
+  update;
+  delete;
+
+  field ( readonly : update ) ProUuid, ProductId;
+
+  action  ( features : instance ) checkProductValidity result [1] $self;
+  action  ( features : instance ) clearValidDays result [1] $self;
+
+  draft action Edit;
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
+
+
+  mapping for znk_t_product
+    {
+      ProUuid            = pro_uuid;
+      ProductId          = product_id;
+      Description        = description;
+      Qty                = qty;
+      Uom                = uom;
+      Price              = price;
+      Currency           = currency;
+      MfgDate            = mfg_date;
+      ExpDate            = exp_date;
+      Plant              = plant;
+      ValidDays          = validdays;
+      LocalCreatedBy     = local_created_by;
+      LocalCreatedAt     = local_created_at;
+      LocalLastChangedAt = local_last_changed_at;
+      LocalLastChangedBy = local_last_changed_by;
+      LastChangedAt      = last_changed_at;
+    }
+}
