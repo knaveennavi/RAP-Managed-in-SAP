@@ -12,12 +12,12 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [Architecture](#-Architecture)
+- [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
 - [Step 1 — Database Table](#-step-1--database-table-main-table)
 - [Step 2 — Draft Table](#-step-2--draft-table-why-it-exists)
-- [Step 3 — Interface View (Base BO)](#-step-3--interface-view-zr_)
-- [Step 4 — Consumption View (Projection)](#-step-4--consumption-view-zc_)
+- [Step 3 — Interface View (Base BO)](#-step-3--interface-view-z_i)
+- [Step 4 — Consumption View (Projection)](#-step-4--consumption-view-z_c)
 - [Step 5 — Metadata Extension](#-step-5--metadata-extension)
 - [Step 6 — Behavior Definition (Interface)](#-step-6--behavior-definition-interface-view)
 - [Step 7 — Behavior Definition (Projection)](#-step-7--behavior-definition-projection-view)
