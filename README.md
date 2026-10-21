@@ -93,8 +93,9 @@ The RAP stack follows a strict layered architecture. Each layer has a specific r
 Before you start, make sure you have:
 
 - [ ] SAP BTP Trial account — [Get one free here](https://account.hanatrial.ondemand.com)
-- [ ] ABAP Environment trial instance provisioned on BTP
-- [ ] Eclipse IDE with **ABAP Development Tools (ADT)** plugin installed
+- [ ] Steps to create Trial account - [Steps](https://developers.sap.com/tutorials/hcp-create-trial-account)
+- [ ] ABAP Environment trial instance provisioned on BTP [Steps](https://developers.sap.com/tutorials/abap-environment-trial-onboarding) 
+- [ ] Eclipse IDE with **ABAP Development Tools (ADT)** plugin installed [Steps](https://developers.sap.com/tutorials/abap-install-adt)
 - [ ] Connected to your BTP ABAP system via ADT
 - [ ] Basic understanding of ABAP syntax and CDS views
 
