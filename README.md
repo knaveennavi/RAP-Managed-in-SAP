@@ -64,7 +64,7 @@ The RAP stack follows a strict layered architecture. Each layer has a specific r
 └────────────────────────┬────────────────────────────────┘
                          │  OData V4
 ┌────────────────────────▼────────────────────────────────┐
-│              Service Definition + Service Binding        │
+│              Service Definition + Service Binding       │
 │         (Exposes which entities go into OData)          │
 └────────────────────────┬────────────────────────────────┘
                          │
